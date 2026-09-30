@@ -311,6 +311,13 @@ h1 {
     var ROMAMOBILE_URL =
         "https://romamobile.it/paline/palina/81844?nav=2";
 
+    /*
+     * Mapping locale generato ogni giorno dal GTFS statico:
+     * trip_id -> route_short_name.
+     */
+    var TRIP_MAP_URL =
+        "gtfs_trip_map.json";
+
     var NETWORK_REFRESH_MS = 30000;
     var DISPLAY_REFRESH_MS = 5000;
     var REQUEST_TIMEOUT_MS = 8000;
@@ -346,6 +353,11 @@ h1 {
 
     var requestRunning = false;
     var lastUpdate = null;
+
+    /*
+     * Popolato da gtfs_trip_map.json.
+     */
+    var tripMap = null;
 
 
     /* ============================================================
@@ -669,6 +681,55 @@ h1 {
             }
 
         ];
+    }
+
+
+    /* ============================================================
+       GTFS STATICO RIDOTTO: trip_id -> linea
+       ============================================================ */
+
+    function loadTripMap(callback) {
+
+        xhrText(
+            cacheBuster(TRIP_MAP_URL),
+
+            function (err, text) {
+
+                var data;
+
+                if (err) {
+                    callback(err);
+                    return;
+                }
+
+                try {
+
+                    data = JSON.parse(text);
+
+                    if (
+                        !data ||
+                        data.stop_id !== STOP_ID ||
+                        !data.trips
+                    ) {
+                        throw new Error(
+                            "Mapping GTFS non valido"
+                        );
+                    }
+
+                    tripMap =
+                        data.trips;
+
+                    callback(
+                        null,
+                        data
+                    );
+
+                } catch (e) {
+
+                    callback(e);
+                }
+            }
+        );
     }
 
 
@@ -1155,18 +1216,39 @@ h1 {
                 }
 
 
-                route =
-                    routeLabel(
-                        trip.routeId
-                    );
+                /*
+                 * Roma Mobilita' spesso identifica correttamente
+                 * la corsa tramite trip_id anche quando route_id
+                 * nel realtime manca o non e' utile per mostrare
+                 * il numero pubblico della linea.
+                 *
+                 * Risolviamo quindi PRIMA trip_id tramite il
+                 * mapping ricavato dal GTFS statico.
+                 */
+                route = null;
 
+                if (
+                    tripMap &&
+                    trip.tripId &&
+                    typeof tripMap[trip.tripId] !== "undefined"
+                ) {
+                    route =
+                        routeLabel(
+                            tripMap[trip.tripId]
+                        );
+                }
 
                 /*
-                 * Se route_id manca, non possiamo mostrare
-                 * correttamente il numero di linea.
-                 *
-                 * In quel caso lasceremo intervenire il fallback.
+                 * Fallback: se il realtime contiene gia' un
+                 * route_id interpretabile come nome pubblico.
                  */
+                if (!route) {
+                    route =
+                        routeLabel(
+                            trip.routeId
+                        );
+                }
+
                 if (!route) {
                     continue;
                 }
@@ -1929,6 +2011,9 @@ h1 {
 
     function refresh() {
 
+        var gtfsSources;
+
+
         if (requestRunning) {
             return;
         }
@@ -1938,31 +2023,34 @@ h1 {
 
         status(
             "loading",
-            "Aggiornamento..."
+            "Aggiornamento GTFS-RT..."
         );
 
 
+        gtfsSources =
+            binarySources(
+                GTFS_RT_URL
+            );
+
+
         /*
-         * 1. RomaMobile: sorgente primaria.
+         * 1. GTFS-RT ufficiale + mapping statico trip_id -> linea.
          */
-        tryRomaMobileSource(
+        tryGtfsSource(
 
-            textProxySources(
-                ROMAMOBILE_URL
-            ),
-
+            gtfsSources,
             0,
 
             function (
-                htmlError,
-                htmlArrivals,
-                htmlSource
+                gtfsError,
+                arrivals,
+                sourceName
             ) {
 
-                if (!htmlError) {
+                if (!gtfsError) {
 
                     currentArrivals =
-                        htmlArrivals;
+                        arrivals;
 
                     lastUpdate =
                         new Date();
@@ -1971,7 +2059,7 @@ h1 {
 
                     status(
                         "ok",
-                        htmlSource
+                        sourceName
                     );
 
                     requestRunning =
@@ -1982,26 +2070,26 @@ h1 {
 
 
                 /*
-                 * 2. GTFS-RT ufficiale come fallback.
+                 * 2. RomaMobile resta soltanto come fallback.
                  */
-                tryGtfsSource(
+                tryRomaMobileSource(
 
-                    binarySources(
-                        GTFS_RT_URL
+                    textProxySources(
+                        ROMAMOBILE_URL
                     ),
 
                     0,
 
                     function (
-                        gtfsError,
-                        arrivals,
-                        sourceName
+                        htmlError,
+                        htmlArrivals,
+                        htmlSource
                     ) {
 
-                        if (!gtfsError) {
+                        if (!htmlError) {
 
                             currentArrivals =
-                                arrivals;
+                                htmlArrivals;
 
                             lastUpdate =
                                 new Date();
@@ -2010,7 +2098,7 @@ h1 {
 
                             status(
                                 "ok",
-                                sourceName +
+                                htmlSource +
                                 " (fallback)"
                             );
 
@@ -2057,9 +2145,37 @@ h1 {
 
 
     /*
-     * Primo collegamento immediato.
+     * Carica prima il piccolo mapping GTFS statico locale.
+     * Poi avvia subito il realtime.
      */
-    refresh();
+    status(
+        "loading",
+        "Caricamento mappa GTFS..."
+    );
+
+    loadTripMap(
+        function (mapError, data) {
+
+            if (mapError) {
+
+                status(
+                    "bad",
+                    "Mappa GTFS non disponibile"
+                );
+
+            } else {
+
+                status(
+                    "ok",
+                    "Mappa GTFS: " +
+                    data.trip_count +
+                    " corse"
+                );
+            }
+
+            refresh();
+        }
+    );
 
 
     /*
