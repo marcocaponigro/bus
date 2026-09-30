@@ -1,0 +1,45 @@
+{
+  "generated_at": "2026-09-30T22:04:55.631802+00:00",
+  "feed_header_timestamp": 1790805884,
+  "bytes": 417540,
+  "entities": 505,
+  "trip_updates": 505,
+  "trip_updates_with_trip_id": 505,
+  "trip_updates_with_route_id": 504,
+  "exact_stop_81844_count": 1,
+  "contains_81844_count": 0,
+  "exact_stop_81844": [
+    {
+      "entity_id": "264",
+      "trip_id": "0#4614-21",
+      "route_id": "38",
+      "stop_id": "81844",
+      "stop_sequence": 19,
+      "arrival": 1790806200,
+      "departure": null
+    }
+  ],
+  "contains_81844": [],
+  "nearby_stop_ids_8184x": [
+    {
+      "stop_id": "81844",
+      "count": 1
+    },
+    {
+      "stop_id": "81846",
+      "count": 7
+    },
+    {
+      "stop_id": "81847",
+      "count": 2
+    },
+    {
+      "stop_id": "81848",
+      "count": 4
+    },
+    {
+      "stop_id": "81849",
+      "count": 5
+    }
+  ]
+}
