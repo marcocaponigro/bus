@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tabellone Bus Realtime - Conca d'Oro</title>
+    <!-- Libreria per leggere i file binari .pb -->
+    <script src="https://jsdelivr.net"></script>
+    <style>
+        body { background-color: #000; color: #fff; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; text-align: center; margin: 0; padding: 20px; }
+        h1 { color: #ffcc00; font-size: 2.2em; margin: 15px 0 5px 0; text-transform: uppercase; }
+        .stazione { color: #888; font-size: 1.1em; margin-bottom: 25px; letter-spacing: 1px; }
+        .tabellone { max-width: 600px; margin: 0 auto; background: #111; border: 2px solid #222; border-radius: 12px; padding: 5px 20px; }
+        .riga-bus { font-size: 2.2em; font-weight: bold; padding: 15px 0; border-bottom: 1px solid #222; display: flex; justify-content: space-between; align-items: center; }
+        .riga-bus:last-child { border-bottom: none; }
+        .linea { color: #ffcc00; background: #222; padding: 2px 12px; border-radius: 6px; }
+        .tempo { color: #00ff66; }
+        .errore { color: #ff3333; font-size: 1.4em; padding: 20px; }
+        .loading { color: #aaa; font-size: 1.5em; padding: 30px; }
+    </style>
+</head>
+<body>
+
+    <h1>PARTENZE BUS LIVE</h1>
+    <div class="stazione">Conca D'oro (MB1) - Palina 81844</div>
+
+    <div class="tabellone" id="tabellone">
+        <div class="loading">Connessione ai satelliti ATAC...</div>
+    </div>
+
+    <script>
+        // Struttura minima per decodificare il GTFS-Realtime
+        const gtfsProto = {
+            nested: {
+                FeedMessage: { fields: { header: { id: 1, type: "FeedHeader" }, entity: { id: 2, rule: "repeated", type: "FeedEntity" } } },
+                FeedHeader: { fields: { gtfsRealtimeVersion: { id: 1, rule: "required", type: "string" } } },
+                FeedEntity: { fields: { id: { id: 1, rule: "required", type: "string" }, tripUpdate: { id: 3, type: "TripUpdate" } } },
+                TripUpdate: { fields: { trip: { id: 1, rule: "required", type: "TripDescriptor" }, stopTimeUpdate: { id: 2, rule: "repeated", type: "StopTimeUpdate" } } },
+                TripDescriptor: { fields: { routeId: { id: 1, type: "string" } } },
+                StopTimeUpdate: { fields: { stopId: { id: 4, type: "string" }, arrival: { id: 2, type: "StopTimeEvent" } } },
+                StopTimeEvent: { fields: { time: { id: 2, type: "int64" } } }
+            }
+        };
+
+        const root = protobuf.Root.fromJSON(gtfsProto);
+        const FeedMessage = root.lookupType("FeedMessage");
+
+        async function aggiornaDalVivo() {
+            const container = document.getElementById('tabellone');
+            // Questo è il file corretto contenente i minuti di arrivo (Trip Updates)
+            const urlPb = "https://romamobilita.it";
+            const proxyUrl = "https://corsproxy.io?" + encodeURIComponent(urlPb);
+
+            try {
+                const risposta = await fetch(proxyUrl);
+                if (!risposta.ok) throw new Error("Errore di rete");
+                
+                const bufferBinario = new Uint8Array(await risposta.arrayBuffer());
+                const messaggio = FeedMessage.decode(bufferBinario);
+                const entita = messaggio.entity || [];
+                
+                let busTrovati = [];
+                const miaPalina = "81844"; 
+
+                entita.forEach(item => {
+                    if (item.tripUpdate) {
+                        const linea = item.tripUpdate.trip.routeId;
+                        const fermate = item.tripUpdate.stopTimeUpdate || [];
+                        
+                        fermate.forEach(fermata => {
+                            if (fermata.stopId === miaPalina && fermata.arrival) {
+                                const tempoEpoch = parseInt(fermata.arrival.time) * 1000;
+                                const minutiMancanti = Math.round((tempoEpoch - Date.now()) / 60000);
+                                
+                                if (minutiMancanti >= -1 && minutiMancanti <= 45) {
+                                    let stringaTempo = minutiMancanti <= 0 ? "In Arrivo" : minutiMancanti + " min";
+                                    busTrovati.push({ linea: linea, tempo: stringaTempo, minuti: minutiMancanti });
+                                }
+                            }
+                        });
+                    }
+                });
+
+                busTrovati.sort((a, b) => a.minuti - b.minuti);
+
+                if (busTrovati.length === 0) {
+                    container.innerHTML = `<div class="errore">Nessun bus rilevato dai satelliti.<br><small>Verifica se il servizio è attivo o notturno.</small></div>`;
+                    return;
+                }
+
+                container.innerHTML = "";
+                busTrovati.forEach(bus => {
+                    container.innerHTML += `
+                        <div class="riga-bus">
+                            <span class="linea">🚌 ${bus.linea}</span>
+                            <span class="tempo">${bus.tempo}</span>
+                        </div>
+                    `;
+                });
+
+            } catch (err) {
+                console.error(err);
+                container.innerHTML = `<div class="errore">Connessione ai dati ATAC fallita.<br><small>Riprovo a breve...</small></div>`;
+            }
+        }
+
+        aggiornaDalVivo();
+        setInterval(aggiornaDalVivo, 30000); // Il tablet aggiorna in locale ogni 30 secondi
+    </script>
+</body>
+</html>
