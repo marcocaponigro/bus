@@ -1350,7 +1350,7 @@ h1 {
 
             setText(
                 row,
-                "Nessun arrivo previsto al momento."
+                "Nessun autobus monitorato al momento."
             );
 
             container.appendChild(row);
@@ -1606,20 +1606,16 @@ h1 {
 
 
         if (
-            s.indexOf("in arrivo") >= 0
+            s.indexOf("in arrivo") >= 0 ||
+            s === "arrivo"
         ) {
             return 0;
         }
 
 
-        /*
-         * RomaMobile:
-         *
-         *   4 Ferm. (3')
-         */
         m =
             s.match(
-                /\((\d+)\s*['’]\s*\)/
+                /\(\s*(\d+)\s*['’]\s*\)/
             );
 
         if (m) {
@@ -1678,72 +1674,182 @@ h1 {
         var doc =
             parseHtml(html);
 
-        var bands =
-            doc.querySelectorAll(
-                'div[class^="banda"]'
+        var pageText =
+            getText(
+                doc.body ||
+                doc.documentElement
             );
 
+        var bands;
+        var lineNodes;
         var arrivals = [];
-
-        var now =
-            nowSeconds();
+        var seen = {};
+        var now = nowSeconds();
 
         var i;
+        var node;
         var lineNode;
         var route;
         var minutes;
+        var text;
+        var key;
+        var noBusText;
 
 
-        for (
-            i = 0;
-            i < bands.length;
-            i++
+        if (
+            pageText.indexOf(STOP_ID) < 0 ||
+            pageText.toLowerCase().indexOf("conca d'oro") < 0
         ) {
-
-            lineNode =
-                bands[i].querySelector(".linea");
-
-
-            route =
-                lineNode
-                ? routeLabel(
-                    getText(lineNode)
-                )
-                : null;
-
-
-            if (!route) {
-                continue;
-            }
-
-
-            minutes =
-                parseWaitMinutes(
-                    getText(bands[i])
-                );
-
-
-            if (minutes === null) {
-                continue;
-            }
-
-
-            arrivals.push({
-
-                route: route,
-
-                /*
-                 * Il fallback fornisce minuti e non timestamp
-                 * assoluti, quindi lo ricostruiamo localmente.
-                 */
-                time:
-                    now +
-                    minutes * 60
-            });
+            throw new Error(
+                "RomaMobile: pagina palina inattesa"
+            );
         }
 
 
-        return cleanArrivals(arrivals);
+        if (doc.querySelectorAll) {
+
+            bands =
+                doc.querySelectorAll(
+                    'div[class^="banda"]'
+                );
+
+            for (
+                i = 0;
+                i < bands.length;
+                i++
+            ) {
+
+                lineNode =
+                    bands[i].querySelector
+                    ? bands[i].querySelector(".linea")
+                    : null;
+
+                route =
+                    lineNode
+                    ? routeLabel(
+                        getText(lineNode)
+                    )
+                    : null;
+
+                if (!route) {
+                    continue;
+                }
+
+                minutes =
+                    parseWaitMinutes(
+                        getText(bands[i])
+                    );
+
+                if (minutes === null) {
+                    continue;
+                }
+
+                key =
+                    route + ":" + minutes;
+
+                if (seen[key]) {
+                    continue;
+                }
+
+                seen[key] = true;
+
+                arrivals.push({
+                    route: route,
+                    time: now + minutes * 60
+                });
+            }
+        }
+
+
+        if (
+            arrivals.length === 0 &&
+            doc.querySelectorAll
+        ) {
+
+            lineNodes =
+                doc.querySelectorAll(".linea");
+
+            for (
+                i = 0;
+                i < lineNodes.length;
+                i++
+            ) {
+
+                route =
+                    routeLabel(
+                        getText(lineNodes[i])
+                    );
+
+                if (!route) {
+                    continue;
+                }
+
+                node = lineNodes[i];
+
+                while (
+                    node &&
+                    node !== doc.body
+                ) {
+
+                    text =
+                        getText(node);
+
+                    minutes =
+                        parseWaitMinutes(text);
+
+                    if (minutes !== null) {
+
+                        key =
+                            route + ":" + minutes;
+
+                        if (!seen[key]) {
+
+                            seen[key] = true;
+
+                            arrivals.push({
+                                route: route,
+                                time: now + minutes * 60
+                            });
+                        }
+
+                        break;
+                    }
+
+                    node =
+                        node.parentNode;
+                }
+            }
+        }
+
+
+        if (arrivals.length > 0) {
+
+            return cleanArrivals(
+                arrivals
+            );
+        }
+
+
+        noBusText =
+            pageText.toLowerCase();
+
+        if (
+            noBusText.indexOf("nessun autobus") >= 0 ||
+            noBusText.indexOf("no buses") >= 0
+        ) {
+
+            if (
+                pageText.indexOf("In Arrivo") < 0 &&
+                !/\(\s*\d+\s*['’]\s*\)/.test(pageText)
+            ) {
+                return [];
+            }
+        }
+
+
+        throw new Error(
+            "RomaMobile: parsing non riuscito"
+        );
     }
 
 
@@ -1823,9 +1929,6 @@ h1 {
 
     function refresh() {
 
-        var gtfsSources;
-
-
         if (requestRunning) {
             return;
         }
@@ -1839,30 +1942,27 @@ h1 {
         );
 
 
-        gtfsSources =
-            binarySources(
-                GTFS_RT_URL
-            );
-
-
         /*
-         * 1. GTFS-RT ufficiale
+         * 1. RomaMobile: sorgente primaria.
          */
-        tryGtfsSource(
+        tryRomaMobileSource(
 
-            gtfsSources,
+            textProxySources(
+                ROMAMOBILE_URL
+            ),
+
             0,
 
             function (
-                gtfsError,
-                arrivals,
-                sourceName
+                htmlError,
+                htmlArrivals,
+                htmlSource
             ) {
 
-                if (!gtfsError) {
+                if (!htmlError) {
 
                     currentArrivals =
-                        arrivals;
+                        htmlArrivals;
 
                     lastUpdate =
                         new Date();
@@ -1871,7 +1971,7 @@ h1 {
 
                     status(
                         "ok",
-                        sourceName
+                        htmlSource
                     );
 
                     requestRunning =
@@ -1882,26 +1982,26 @@ h1 {
 
 
                 /*
-                 * 2. fallback RomaMobile
+                 * 2. GTFS-RT ufficiale come fallback.
                  */
-                tryRomaMobileSource(
+                tryGtfsSource(
 
-                    textProxySources(
-                        ROMAMOBILE_URL
+                    binarySources(
+                        GTFS_RT_URL
                     ),
 
                     0,
 
                     function (
-                        htmlError,
-                        htmlArrivals,
-                        htmlSource
+                        gtfsError,
+                        arrivals,
+                        sourceName
                     ) {
 
-                        if (!htmlError) {
+                        if (!gtfsError) {
 
                             currentArrivals =
-                                htmlArrivals;
+                                arrivals;
 
                             lastUpdate =
                                 new Date();
@@ -1910,7 +2010,7 @@ h1 {
 
                             status(
                                 "ok",
-                                htmlSource +
+                                sourceName +
                                 " (fallback)"
                             );
 
