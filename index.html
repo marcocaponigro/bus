@@ -1,126 +1,1998 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="it">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tabellone Bus Live - Conca d'Oro</title>
-    <style>
-        body {
-            background-color: #000;
-            color: #fff;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            text-align: center;
-            margin: 0;
-            padding: 20px;
-        }
-        h1 { color: #ffcc00; font-size: 2.2em; margin: 15px 0 5px 0; text-transform: uppercase; }
-        .stazione { color: #888; font-size: 1.1em; margin-bottom: 25px; letter-spacing: 1px; }
-        .tabellone {
-            max-width: 600px;
-            margin: 0 auto;
-            background: #111;
-            border: 2px solid #222;
-            border-radius: 12px;
-            padding: 5px 20px;
-        }
-        .riga-bus {
-            font-size: 2.2em;
-            font-weight: bold;
-            padding: 15px 0;
-            border-bottom: 1px solid #222;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .riga-bus:last-child { border-bottom: none; }
-        .linea { color: #ffcc00; background: #222; padding: 2px 12px; border-radius: 6px; }
-        .tempo { color: #00ff66; }
-        .errore { color: #ff3333; font-size: 1.4em; padding: 20px; }
-        .loading { color: #aaa; font-size: 1.5em; padding: 30px; }
-    </style>
+<meta charset="utf-8">
+<meta name="viewport"
+      content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+
+<title>Conca D'Oro - Bus</title>
+
+<style>
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    min-height: 100%;
+    background: #000;
+    color: #fff;
+    font-family: Arial, Helvetica, sans-serif;
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    overflow-x: hidden;
+}
+
+#app {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 16px 22px;
+    box-sizing: border-box;
+}
+
+/* ---------- header ---------- */
+
+#header {
+    display: table;
+    width: 100%;
+    border-bottom: 2px solid #333;
+    padding-bottom: 14px;
+    margin-bottom: 8px;
+}
+
+#head-left,
+#head-right {
+    display: table-cell;
+    vertical-align: bottom;
+}
+
+#head-right {
+    text-align: right;
+    white-space: nowrap;
+}
+
+h1 {
+    margin: 0;
+    font-size: 40px;
+    line-height: 1.05;
+}
+
+#stop-code {
+    margin-top: 7px;
+    color: #999;
+    font-size: 18px;
+    letter-spacing: 2px;
+}
+
+#clock {
+    color: #ffb400;
+    font-size: 34px;
+    font-weight: bold;
+}
+
+#rt-label {
+    color: #777;
+    font-size: 14px;
+    margin-top: 4px;
+}
+
+/* ---------- arrivals ---------- */
+
+.arrival {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+    padding: 13px 0;
+    border-bottom: 1px solid #222;
+    box-sizing: border-box;
+}
+
+.route,
+.wait {
+    display: table-cell;
+    vertical-align: middle;
+}
+
+.route {
+    width: 40%;
+}
+
+.wait {
+    width: 60%;
+    text-align: right;
+}
+
+.route-box {
+    display: inline-block;
+    min-width: 105px;
+    padding: 8px 17px;
+    box-sizing: border-box;
+
+    background: #222;
+    border: 2px solid #f5a400;
+    border-radius: 7px;
+
+    color: #ffc233;
+
+    font-size: 48px;
+    line-height: 1;
+    font-weight: bold;
+    text-align: center;
+}
+
+.minutes {
+    color: #00ff66;
+    font-size: 60px;
+    line-height: 1;
+    font-weight: bold;
+}
+
+.min-label {
+    color: #aaa;
+    font-size: 25px;
+    margin-left: 7px;
+}
+
+.arriving {
+    color: #ffe000;
+    font-size: 40px;
+    line-height: 1;
+    font-weight: bold;
+    text-transform: uppercase;
+
+    -webkit-animation: blink 1.1s steps(2, start) infinite;
+    animation: blink 1.1s steps(2, start) infinite;
+}
+
+@-webkit-keyframes blink {
+    0%   { opacity: 1; }
+    50%  { opacity: .25; }
+    100% { opacity: 1; }
+}
+
+@keyframes blink {
+    0%   { opacity: 1; }
+    50%  { opacity: .25; }
+    100% { opacity: 1; }
+}
+
+/* ---------- messages ---------- */
+
+.message {
+    margin-top: 25px;
+    padding: 30px 18px;
+
+    border: 1px solid #333;
+    border-radius: 7px;
+
+    background: #0a0a0a;
+    color: #ddd;
+
+    text-align: center;
+    font-size: 27px;
+    line-height: 1.35;
+}
+
+.message.error {
+    color: #ffc84a;
+    border-color: #5d4200;
+}
+
+/* ---------- footer ---------- */
+
+#footer {
+    display: table;
+    width: 100%;
+
+    margin-top: 14px;
+    padding-top: 9px;
+
+    border-top: 1px solid #181818;
+
+    color: #666;
+    font-size: 13px;
+}
+
+#footer-left,
+#footer-right {
+    display: table-cell;
+}
+
+#footer-right {
+    text-align: right;
+}
+
+.dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    margin-right: 6px;
+    border-radius: 50%;
+}
+
+.dot.ok      { background: #00ff66; }
+.dot.loading { background: #ffb400; }
+.dot.bad     { background: #ff6633; }
+
+/* ---------- tablet ---------- */
+
+@media (max-width: 700px) {
+
+    #app {
+        padding: 12px 14px;
+    }
+
+    h1 {
+        font-size: 29px;
+    }
+
+    #clock {
+        font-size: 27px;
+    }
+
+    .route-box {
+        min-width: 86px;
+        font-size: 39px;
+        padding: 7px 12px;
+    }
+
+    .minutes {
+        font-size: 49px;
+    }
+
+    .min-label {
+        font-size: 21px;
+    }
+
+    .arriving {
+        font-size: 32px;
+    }
+
+    .message {
+        font-size: 22px;
+    }
+}
+</style>
 </head>
+
 <body>
 
-    <h1>PARTENZE BUS LIVE</h1>
-    <div class="stazione">Conca D'oro (MB1) - Palina 81844</div>
+<div id="app">
 
-    <div class="tabellone" id="tabellone">
-        <div class="loading">Interrogazione server ArcGIS Roma...</div>
+    <div id="header">
+        <div id="head-left">
+            <h1>Conca D'Oro (MB1)</h1>
+            <div id="stop-code">PALINA 81844</div>
+        </div>
+
+        <div id="head-right">
+            <div id="clock">--:--</div>
+            <div id="rt-label">arrivi in tempo reale</div>
+        </div>
     </div>
 
-    <script>
-        async function aggiornaDalVivo() {
-            const container = document.getElementById('tabellone');
-            
-            // Interroghiamo direttamente l'endpoint pubblico ArcGIS di Roma Mobilità per i tempi di attesa
-            const urlArcGIS = "https://romamobilita.it";
-            
-            // Utilizziamo un proxy CORS solido per le richieste testuali JSON
-            const proxyUrl = "https://allorigins.win" + encodeURIComponent(urlArcGIS);
+    <div id="arrivals">
+        <div class="message">Caricamento dati...</div>
+    </div>
+
+    <div id="footer">
+        <div id="footer-left">
+            <span id="status-dot" class="dot loading"></span>
+            <span id="status">Connessione...</span>
+        </div>
+
+        <div id="footer-right">
+            <span id="updated">--</span>
+        </div>
+    </div>
+
+</div>
+
+
+<script>
+(function () {
+
+    "use strict";
+
+
+    /* ============================================================
+       CONFIGURAZIONE
+       ============================================================ */
+
+    var STOP_ID = "81844";
+
+    var GTFS_RT_URL =
+        "https://romamobilita.it/sites/default/files/" +
+        "rome_rtgtfs_trip_updates_feed.pb";
+
+    var ROMAMOBILE_URL =
+        "https://romamobile.it/paline/palina/81844?nav=2";
+
+    var NETWORK_REFRESH_MS = 30000;
+    var DISPLAY_REFRESH_MS = 5000;
+    var REQUEST_TIMEOUT_MS = 8000;
+
+    /*
+     * Linee che appartengono alla palina 81844.
+     *
+     * Serve anche a evitare di mostrare eventuali dati relativi a
+     * movimenti tecnici/inoperosi presenti nei dataset.
+     */
+    var ALLOWED_ROUTES = {
+        "38":   "38",
+        "63":   "63",
+        "80":   "80",
+        "P10":  "P10",
+        "NMB1": "nMB1"
+    };
+
+
+    /*
+     * Ultimo insieme di arrivi ricevuto.
+     *
+     * Ogni elemento:
+     *
+     * {
+     *     route: "80",
+     *     time:  1790781234
+     * }
+     *
+     * time = Unix timestamp in secondi.
+     */
+    var currentArrivals = [];
+
+    var requestRunning = false;
+    var lastUpdate = null;
+
+
+    /* ============================================================
+       UTILITA'
+       ============================================================ */
+
+    function byId(id) {
+        return document.getElementById(id);
+    }
+
+
+    function trim(s) {
+        return String(s === null ||
+                      typeof s === "undefined" ? "" : s)
+                      .replace(/^\s+|\s+$/g, "");
+    }
+
+
+    function pad2(n) {
+        return n < 10 ? "0" + n : String(n);
+    }
+
+
+    function nowSeconds() {
+        return Math.floor(new Date().getTime() / 1000);
+    }
+
+
+    function setText(node, text) {
+
+        if (!node) {
+            return;
+        }
+
+        if (typeof node.textContent !== "undefined") {
+            node.textContent = text;
+        } else {
+            node.innerText = text;
+        }
+    }
+
+
+    function getText(node) {
+
+        if (!node) {
+            return "";
+        }
+
+        if (typeof node.textContent !== "undefined") {
+            return node.textContent || "";
+        }
+
+        return node.innerText || "";
+    }
+
+
+    function updateClock() {
+
+        var d = new Date();
+
+        setText(
+            byId("clock"),
+            pad2(d.getHours()) + ":" + pad2(d.getMinutes())
+        );
+    }
+
+
+    function formattedUpdateTime() {
+
+        if (!lastUpdate) {
+            return "--";
+        }
+
+        return "agg. " +
+            pad2(lastUpdate.getHours()) + ":" +
+            pad2(lastUpdate.getMinutes()) + ":" +
+            pad2(lastUpdate.getSeconds());
+    }
+
+
+    function status(type, text) {
+
+        var dot = byId("status-dot");
+
+        dot.className = "dot " + type;
+
+        setText(byId("status"), text);
+        setText(byId("updated"), formattedUpdateTime());
+    }
+
+
+    function cacheBuster(url) {
+
+        return url +
+            (url.indexOf("?") >= 0 ? "&" : "?") +
+            "_=" + new Date().getTime();
+    }
+
+
+    /* ============================================================
+       XHR TESTO
+       ============================================================ */
+
+    function xhrText(url, callback) {
+
+        var xhr = new XMLHttpRequest();
+        var finished = false;
+
+        var timer = setTimeout(function () {
+
+            if (finished) {
+                return;
+            }
+
+            finished = true;
 
             try {
-                const risposta = await fetch(proxyUrl);
-                if (!risposta.ok) throw new Error("Errore di rete");
-                
-                const wrapper = await risposta.json();
-                // Allorigins inserisce la risposta testuale dentro la chiave .contents
-                const datiStr = wrapper.contents;
-                const dati = JSON.parse(datiStr);
-                
-                // La struttura delle API di Roma Mobilità restituisce la lista dentro "previsioni" o "arrivi"
-                const arrivi = dati.previsioni || dati.arrivi || [];
-                let busTrovati = [];
+                xhr.abort();
+            } catch (ignore) {}
 
-                arrivi.forEach(bus => {
-                    // Estraiamo il nome della linea (es: 80, 38) e il tempo stimato
-                    const nomeLinea = bus.linea || bus.route_id || bus.nomeLinea;
-                    let tempoAttesa = bus.tempo_attesa || bus.previsione || bus.a_bordo;
-                    
-                    if (nomeLinea && tempoAttesa) {
-                        // Formattiamo il testo per renderlo elegante (es: "In Arrivo" o "5 min")
-                        if (tempoAttesa === "0" || tempoAttesa.toLowerCase().includes("arrivo")) {
-                            tempoAttesa = "In Arrivo";
-                        } else if (!tempoAttesa.toLowerCase().includes("min")) {
-                            tempoAttesa = tempoAttesa + " min";
-                        }
-                        
-                        busTrovati.push({ 
-                            linea: nomeLinea, 
-                            tempo: tempoAttesa,
-                            minuti: parseInt(tempoAttesa) || 0 
-                        });
-                    }
-                });
+            callback(new Error("Timeout"));
 
-                // Ordiniamo i bus in base a chi arriva prima
-                busTrovati.sort((a, b) => a.minuti - b.minuti);
+        }, REQUEST_TIMEOUT_MS);
 
-                if (busTrovati.length === 0) {
-                    container.innerHTML = `<div class="errore">Nessun autobus rilevato in arrivo.<br><small>Verifica se la linea è attiva in questa fascia oraria.</small></div>`;
+
+        function finish(err, value) {
+
+            if (finished) {
+                return;
+            }
+
+            finished = true;
+            clearTimeout(timer);
+
+            callback(err, value);
+        }
+
+
+        try {
+
+            xhr.onreadystatechange = function () {
+
+                if (xhr.readyState !== 4) {
                     return;
                 }
 
-                container.innerHTML = "";
-                busTrovati.forEach(bus => {
-                    container.innerHTML += `
-                        <div class="riga-bus">
-                            <span class="linea">🚌 ${bus.linea}</span>
-                            <span class="tempo">${bus.tempo}</span>
-                        </div>
-                    `;
-                });
+                if (xhr.status >= 200 && xhr.status < 300) {
 
-            } catch (err) {
-                console.error(err);
-                container.innerHTML = `<div class="errore">Collegamento ai dati di Roma fallito.<br><small>Nuovo tentativo tra poco...</small></div>`;
+                    finish(null, xhr.responseText || "");
+
+                } else {
+
+                    finish(
+                        new Error("HTTP " + xhr.status)
+                    );
+                }
+            };
+
+
+            xhr.onerror = function () {
+
+                finish(
+                    new Error("Errore rete/CORS")
+                );
+            };
+
+
+            xhr.open("GET", url, true);
+            xhr.send(null);
+
+        } catch (e) {
+
+            finish(e);
+        }
+    }
+
+
+    /* ============================================================
+       XHR BINARIO
+       ============================================================ */
+
+    function xhrBinary(url, callback) {
+
+        var xhr = new XMLHttpRequest();
+        var finished = false;
+
+        var timer = setTimeout(function () {
+
+            if (finished) {
+                return;
+            }
+
+            finished = true;
+
+            try {
+                xhr.abort();
+            } catch (ignore) {}
+
+            callback(new Error("Timeout"));
+
+        }, REQUEST_TIMEOUT_MS);
+
+
+        function finish(err, value) {
+
+            if (finished) {
+                return;
+            }
+
+            finished = true;
+            clearTimeout(timer);
+
+            callback(err, value);
+        }
+
+
+        try {
+
+            xhr.open("GET", url, true);
+
+            /*
+             * ArrayBuffer è disponibile nelle WebView Android 4.x.
+             */
+            xhr.responseType = "arraybuffer";
+
+
+            xhr.onload = function () {
+
+                if (xhr.status >= 200 &&
+                    xhr.status < 300 &&
+                    xhr.response) {
+
+                    finish(null, xhr.response);
+
+                } else {
+
+                    finish(
+                        new Error("HTTP " + xhr.status)
+                    );
+                }
+            };
+
+
+            xhr.onerror = function () {
+
+                finish(
+                    new Error("Errore rete/CORS")
+                );
+            };
+
+
+            xhr.send(null);
+
+        } catch (e) {
+
+            finish(e);
+        }
+    }
+
+
+    /* ============================================================
+       PROXY CORS
+
+       Prima proviamo SEMPRE il server ufficiale direttamente.
+       I proxy vengono usati solo se necessario.
+       ============================================================ */
+
+    function binarySources(target) {
+
+        var targetWithCache =
+            cacheBuster(target);
+
+        return [
+
+            {
+                name: "GTFS-RT diretto",
+                url: targetWithCache
+            },
+
+            {
+                name: "GTFS-RT via CorsProxy",
+                url:
+                    "https://corsproxy.io/?url=" +
+                    encodeURIComponent(targetWithCache)
+            },
+
+            {
+                name: "GTFS-RT via AllOrigins",
+                url:
+                    "https://api.allorigins.win/raw?url=" +
+                    encodeURIComponent(targetWithCache)
+            }
+
+        ];
+    }
+
+
+    function textProxySources(target) {
+
+        var t = cacheBuster(target);
+
+        return [
+
+            {
+                name: "RomaMobile diretto",
+                url: t
+            },
+
+            {
+                name: "RomaMobile via CorsProxy",
+                url:
+                    "https://corsproxy.io/?url=" +
+                    encodeURIComponent(t)
+            },
+
+            {
+                name: "RomaMobile via AllOrigins",
+                url:
+                    "https://api.allorigins.win/raw?url=" +
+                    encodeURIComponent(t)
+            }
+
+        ];
+    }
+
+
+    /* ============================================================
+       MINIMAL PROTOCOL BUFFERS READER
+
+       Decodifichiamo soltanto i campi del GTFS-Realtime
+       che ci servono.
+
+       Nessuna libreria esterna.
+       ============================================================ */
+
+    function Reader(bytes, start, end) {
+
+        this.bytes = bytes;
+        this.pos = start || 0;
+
+        this.end =
+            typeof end === "number"
+            ? end
+            : bytes.length;
+    }
+
+
+    /*
+     * Varint generico.
+     *
+     * Non usiamo operatori bitwise sul risultato perché in JS
+     * quelli sono limitati a 32 bit. Un Unix timestamp richiede
+     * più di 31 bit.
+     */
+    Reader.prototype.varint = function () {
+
+        var result = 0;
+        var multiplier = 1;
+        var b;
+
+        while (this.pos < this.end) {
+
+            b = this.bytes[this.pos++];
+
+            result +=
+                (b & 127) * multiplier;
+
+            if ((b & 128) === 0) {
+                return result;
+            }
+
+            multiplier *= 128;
+
+            if (multiplier > 9007199254740992) {
+                throw new Error("Varint troppo grande");
             }
         }
 
-        // Avvio immediato al caricamento
-        aggiornaDalVivo();
-        
-        // Il tablet aggiornerà lo schermo da solo ogni 30 secondi in tempo reale
-        setInterval(aggiornaDalVivo, 30000);
-    </script>
+        throw new Error("Varint incompleto");
+    };
+
+
+    Reader.prototype.subReader = function (length) {
+
+        var start = this.pos;
+        var end = start + length;
+
+        if (end > this.end) {
+            throw new Error("Messaggio protobuf troncato");
+        }
+
+        this.pos = end;
+
+        return new Reader(
+            this.bytes,
+            start,
+            end
+        );
+    };
+
+
+    /*
+     * Gli identificatori GTFS di Roma sono ASCII.
+     * Evitiamo TextDecoder per compatibilità Android 4.4.
+     */
+    Reader.prototype.string = function (length) {
+
+        var end = this.pos + length;
+        var s = "";
+        var i;
+
+        if (end > this.end) {
+            throw new Error("Stringa protobuf troncata");
+        }
+
+        for (i = this.pos; i < end; i++) {
+            s += String.fromCharCode(this.bytes[i]);
+        }
+
+        this.pos = end;
+
+        return s;
+    };
+
+
+    Reader.prototype.skip = function (wireType) {
+
+        var len;
+
+        switch (wireType) {
+
+        case 0:
+            this.varint();
+            break;
+
+        case 1:
+            this.pos += 8;
+            break;
+
+        case 2:
+            len = this.varint();
+            this.pos += len;
+            break;
+
+        case 5:
+            this.pos += 4;
+            break;
+
+        default:
+            throw new Error(
+                "Wire type protobuf non supportato: " +
+                wireType
+            );
+        }
+
+        if (this.pos > this.end) {
+            throw new Error("Protobuf troncato");
+        }
+    };
+
+
+    /* ============================================================
+       GTFS-RT: StopTimeEvent
+
+       message StopTimeEvent {
+           optional int32 delay = 1;
+           optional int64 time = 2;
+           ...
+       }
+       ============================================================ */
+
+    function parseStopTimeEvent(r) {
+
+        var time = null;
+        var tag;
+        var field;
+        var wire;
+
+        while (r.pos < r.end) {
+
+            tag = r.varint();
+
+            field = Math.floor(tag / 8);
+            wire = tag % 8;
+
+            if (field === 2 && wire === 0) {
+
+                time = r.varint();
+
+            } else {
+
+                r.skip(wire);
+            }
+        }
+
+        return time;
+    }
+
+
+    /* ============================================================
+       GTFS-RT: StopTimeUpdate
+
+       stop_sequence = 1
+       arrival       = 2
+       departure     = 3
+       stop_id       = 4
+       ============================================================ */
+
+    function parseStopTimeUpdate(r) {
+
+        var out = {
+            stopId: null,
+            arrival: null,
+            departure: null
+        };
+
+        var tag;
+        var field;
+        var wire;
+        var len;
+        var sub;
+
+        while (r.pos < r.end) {
+
+            tag = r.varint();
+
+            field = Math.floor(tag / 8);
+            wire = tag % 8;
+
+
+            if (field === 2 && wire === 2) {
+
+                len = r.varint();
+                sub = r.subReader(len);
+
+                out.arrival =
+                    parseStopTimeEvent(sub);
+
+
+            } else if (field === 3 && wire === 2) {
+
+                len = r.varint();
+                sub = r.subReader(len);
+
+                out.departure =
+                    parseStopTimeEvent(sub);
+
+
+            } else if (field === 4 && wire === 2) {
+
+                len = r.varint();
+
+                out.stopId =
+                    r.string(len);
+
+
+            } else {
+
+                r.skip(wire);
+            }
+        }
+
+        return out;
+    }
+
+
+    /* ============================================================
+       GTFS-RT: TripDescriptor
+
+       trip_id  = 1
+       route_id = 5
+       ============================================================ */
+
+    function parseTripDescriptor(r) {
+
+        var out = {
+            tripId: null,
+            routeId: null
+        };
+
+        var tag;
+        var field;
+        var wire;
+        var len;
+
+        while (r.pos < r.end) {
+
+            tag = r.varint();
+
+            field = Math.floor(tag / 8);
+            wire = tag % 8;
+
+
+            if (field === 1 && wire === 2) {
+
+                len = r.varint();
+                out.tripId = r.string(len);
+
+
+            } else if (field === 5 && wire === 2) {
+
+                len = r.varint();
+                out.routeId = r.string(len);
+
+
+            } else {
+
+                r.skip(wire);
+            }
+        }
+
+        return out;
+    }
+
+
+    /* ============================================================
+       GTFS-RT: TripUpdate
+
+       trip             = 1
+       stop_time_update = 2
+       ============================================================ */
+
+    function parseTripUpdate(r) {
+
+        var out = {
+            routeId: null,
+            tripId: null,
+            stops: []
+        };
+
+        var descriptor;
+        var update;
+
+        var tag;
+        var field;
+        var wire;
+        var len;
+        var sub;
+
+        while (r.pos < r.end) {
+
+            tag = r.varint();
+
+            field = Math.floor(tag / 8);
+            wire = tag % 8;
+
+
+            if (field === 1 && wire === 2) {
+
+                len = r.varint();
+                sub = r.subReader(len);
+
+                descriptor =
+                    parseTripDescriptor(sub);
+
+                out.routeId =
+                    descriptor.routeId;
+
+                out.tripId =
+                    descriptor.tripId;
+
+
+            } else if (field === 2 && wire === 2) {
+
+                len = r.varint();
+                sub = r.subReader(len);
+
+                update =
+                    parseStopTimeUpdate(sub);
+
+                out.stops.push(update);
+
+
+            } else {
+
+                r.skip(wire);
+            }
+        }
+
+        return out;
+    }
+
+
+    /* ============================================================
+       GTFS-RT: FeedEntity
+
+       id          = 1
+       trip_update = 3
+       ============================================================ */
+
+    function parseFeedEntity(r) {
+
+        var tripUpdate = null;
+
+        var tag;
+        var field;
+        var wire;
+        var len;
+        var sub;
+
+        while (r.pos < r.end) {
+
+            tag = r.varint();
+
+            field = Math.floor(tag / 8);
+            wire = tag % 8;
+
+
+            if (field === 3 && wire === 2) {
+
+                len = r.varint();
+                sub = r.subReader(len);
+
+                tripUpdate =
+                    parseTripUpdate(sub);
+
+
+            } else {
+
+                r.skip(wire);
+            }
+        }
+
+        return tripUpdate;
+    }
+
+
+    /* ============================================================
+       ROUTE LABEL
+       ============================================================ */
+
+    function routeLabel(routeId) {
+
+        var key;
+
+        if (!routeId) {
+            return null;
+        }
+
+        key =
+            trim(routeId).toUpperCase();
+
+        if (typeof ALLOWED_ROUTES[key] !== "undefined") {
+            return ALLOWED_ROUTES[key];
+        }
+
+        return null;
+    }
+
+
+    /* ============================================================
+       GTFS-RT: FeedMessage
+
+       entity = 2
+       ============================================================ */
+
+    function parseGtfsRealtime(arrayBuffer) {
+
+        var bytes =
+            new Uint8Array(arrayBuffer);
+
+        var r =
+            new Reader(bytes);
+
+        var arrivals = [];
+
+        var tag;
+        var field;
+        var wire;
+        var len;
+        var sub;
+
+        var trip;
+        var route;
+        var stop;
+
+        var i;
+        var eventTime;
+
+        var matchingStops = 0;
+
+
+        while (r.pos < r.end) {
+
+            tag = r.varint();
+
+            field = Math.floor(tag / 8);
+            wire = tag % 8;
+
+
+            /*
+             * FeedMessage.entity = field 2
+             */
+            if (field === 2 && wire === 2) {
+
+                len = r.varint();
+
+                sub =
+                    r.subReader(len);
+
+                trip =
+                    parseFeedEntity(sub);
+
+
+                if (!trip) {
+                    continue;
+                }
+
+
+                route =
+                    routeLabel(
+                        trip.routeId
+                    );
+
+
+                /*
+                 * Se route_id manca, non possiamo mostrare
+                 * correttamente il numero di linea.
+                 *
+                 * In quel caso lasceremo intervenire il fallback.
+                 */
+                if (!route) {
+                    continue;
+                }
+
+
+                for (
+                    i = 0;
+                    i < trip.stops.length;
+                    i++
+                ) {
+
+                    stop =
+                        trip.stops[i];
+
+
+                    if (
+                        stop.stopId !== STOP_ID
+                    ) {
+                        continue;
+                    }
+
+
+                    matchingStops++;
+
+
+                    eventTime =
+                        stop.arrival !== null
+                        ? stop.arrival
+                        : stop.departure;
+
+
+                    if (
+                        eventTime !== null &&
+                        eventTime > 0
+                    ) {
+
+                        arrivals.push({
+
+                            route: route,
+                            time: eventTime
+                        });
+                    }
+                }
+
+
+            } else {
+
+                r.skip(wire);
+            }
+        }
+
+
+        return {
+
+            arrivals: arrivals,
+            matchingStops: matchingStops
+        };
+    }
+
+
+    /* ============================================================
+       NORMALIZZAZIONE / DEDUPLICAZIONE
+       ============================================================ */
+
+    function cleanArrivals(arrivals) {
+
+        var out = [];
+        var seen = {};
+        var now = nowSeconds();
+
+        var i;
+        var a;
+        var key;
+
+
+        arrivals.sort(function (a, b) {
+
+            if (a.time !== b.time) {
+                return a.time - b.time;
+            }
+
+            if (a.route < b.route) {
+                return -1;
+            }
+
+            if (a.route > b.route) {
+                return 1;
+            }
+
+            return 0;
+        });
+
+
+        for (
+            i = 0;
+            i < arrivals.length;
+            i++
+        ) {
+
+            a = arrivals[i];
+
+
+            /*
+             * Scarta previsioni già passate da più di 90 secondi.
+             */
+            if (a.time < now - 90) {
+                continue;
+            }
+
+
+            /*
+             * Scarta valori evidentemente anomali oltre 3 ore.
+             */
+            if (a.time > now + 3 * 60 * 60) {
+                continue;
+            }
+
+
+            key =
+                a.route + ":" +
+                Math.round(a.time / 10);
+
+
+            if (seen[key]) {
+                continue;
+            }
+
+            seen[key] = true;
+
+            out.push(a);
+        }
+
+
+        return out;
+    }
+
+
+    /* ============================================================
+       RENDER
+       ============================================================ */
+
+    function render() {
+
+        var container =
+            byId("arrivals");
+
+        var arrivals =
+            cleanArrivals(
+                currentArrivals.slice(0)
+            );
+
+        var now =
+            nowSeconds();
+
+        var maxRows = 12;
+        var count;
+
+        var i;
+        var a;
+        var seconds;
+        var minutes;
+
+        var row;
+        var routeCell;
+        var waitCell;
+        var box;
+        var number;
+        var label;
+
+
+        container.innerHTML = "";
+
+
+        if (arrivals.length === 0) {
+
+            row =
+                document.createElement("div");
+
+            row.className =
+                "message";
+
+            setText(
+                row,
+                "Nessun arrivo previsto al momento."
+            );
+
+            container.appendChild(row);
+
+            return;
+        }
+
+
+        count =
+            Math.min(
+                arrivals.length,
+                maxRows
+            );
+
+
+        for (i = 0; i < count; i++) {
+
+            a =
+                arrivals[i];
+
+
+            seconds =
+                a.time - now;
+
+
+            minutes =
+                Math.ceil(
+                    seconds / 60
+                );
+
+
+            row =
+                document.createElement("div");
+
+            row.className =
+                "arrival";
+
+
+            routeCell =
+                document.createElement("div");
+
+            routeCell.className =
+                "route";
+
+
+            box =
+                document.createElement("span");
+
+            box.className =
+                "route-box";
+
+            setText(
+                box,
+                a.route
+            );
+
+            routeCell.appendChild(box);
+
+
+            waitCell =
+                document.createElement("div");
+
+            waitCell.className =
+                "wait";
+
+
+            /*
+             * <= 60 secondi:
+             * sul tabellone è più utile "In Arrivo"
+             * che "1 min".
+             */
+            if (seconds <= 60) {
+
+                number =
+                    document.createElement("span");
+
+                number.className =
+                    "arriving";
+
+                setText(
+                    number,
+                    "In Arrivo"
+                );
+
+                waitCell.appendChild(number);
+
+
+            } else {
+
+                number =
+                    document.createElement("span");
+
+                number.className =
+                    "minutes";
+
+                setText(
+                    number,
+                    String(minutes)
+                );
+
+
+                label =
+                    document.createElement("span");
+
+                label.className =
+                    "min-label";
+
+                setText(
+                    label,
+                    "min"
+                );
+
+
+                waitCell.appendChild(number);
+                waitCell.appendChild(label);
+            }
+
+
+            row.appendChild(routeCell);
+            row.appendChild(waitCell);
+
+            container.appendChild(row);
+        }
+    }
+
+
+    function renderOffline() {
+
+        var container =
+            byId("arrivals");
+
+        var box =
+            document.createElement("div");
+
+        container.innerHTML = "";
+
+        box.className =
+            "message error";
+
+        setText(
+            box,
+            "Sistemi ATAC offline, riconnessione in corso..."
+        );
+
+        container.appendChild(box);
+    }
+
+
+    /* ============================================================
+       TENTATIVO GTFS-RT
+       ============================================================ */
+
+    function tryGtfsSource(sources, index, callback) {
+
+        if (index >= sources.length) {
+
+            callback(
+                new Error(
+                    "Tutte le sorgenti GTFS-RT hanno fallito"
+                )
+            );
+
+            return;
+        }
+
+
+        xhrBinary(
+            sources[index].url,
+
+            function (err, buffer) {
+
+                var parsed;
+                var arrivals;
+
+
+                if (err) {
+
+                    tryGtfsSource(
+                        sources,
+                        index + 1,
+                        callback
+                    );
+
+                    return;
+                }
+
+
+                try {
+
+                    parsed =
+                        parseGtfsRealtime(
+                            buffer
+                        );
+
+                    arrivals =
+                        cleanArrivals(
+                            parsed.arrivals
+                        );
+
+
+                    /*
+                     * Un feed valido ma senza risultati per 81844
+                     * può significare semplicemente che non ci sono
+                     * veicoli; tuttavia il fallback HTML può darci
+                     * una conferma migliore.
+                     */
+                    if (arrivals.length === 0) {
+
+                        tryGtfsSource(
+                            sources,
+                            index + 1,
+                            callback
+                        );
+
+                        return;
+                    }
+
+
+                    callback(
+                        null,
+                        arrivals,
+                        sources[index].name
+                    );
+
+
+                } catch (e) {
+
+                    /*
+                     * Il server potrebbe aver restituito HTML,
+                     * una pagina di errore, ecc.
+                     */
+                    tryGtfsSource(
+                        sources,
+                        index + 1,
+                        callback
+                    );
+                }
+            }
+        );
+    }
+
+
+    /* ============================================================
+       PARSER ROMAMOBILE FALLBACK
+       ============================================================ */
+
+    function parseWaitMinutes(text) {
+
+        var s =
+            trim(text).toLowerCase();
+
+        var m;
+
+
+        if (
+            s.indexOf("in arrivo") >= 0
+        ) {
+            return 0;
+        }
+
+
+        /*
+         * RomaMobile:
+         *
+         *   4 Ferm. (3')
+         */
+        m =
+            s.match(
+                /\((\d+)\s*['’]\s*\)/
+            );
+
+        if (m) {
+            return parseInt(m[1], 10);
+        }
+
+
+        return null;
+    }
+
+
+    function parseHtml(html) {
+
+        var doc = null;
+
+        if (window.DOMParser) {
+
+            try {
+
+                doc =
+                    new DOMParser()
+                    .parseFromString(
+                        html,
+                        "text/html"
+                    );
+
+            } catch (ignore) {}
+        }
+
+
+        if (
+            !doc &&
+            document.implementation &&
+            document.implementation.createHTMLDocument
+        ) {
+
+            doc =
+                document.implementation
+                .createHTMLDocument("");
+
+            doc.documentElement.innerHTML =
+                html;
+        }
+
+
+        if (!doc) {
+            throw new Error("Parser HTML non disponibile");
+        }
+
+        return doc;
+    }
+
+
+    function parseRomaMobile(html) {
+
+        var doc =
+            parseHtml(html);
+
+        var bands =
+            doc.querySelectorAll(
+                'div[class^="banda"]'
+            );
+
+        var arrivals = [];
+
+        var now =
+            nowSeconds();
+
+        var i;
+        var lineNode;
+        var route;
+        var minutes;
+
+
+        for (
+            i = 0;
+            i < bands.length;
+            i++
+        ) {
+
+            lineNode =
+                bands[i].querySelector(".linea");
+
+
+            route =
+                lineNode
+                ? routeLabel(
+                    getText(lineNode)
+                )
+                : null;
+
+
+            if (!route) {
+                continue;
+            }
+
+
+            minutes =
+                parseWaitMinutes(
+                    getText(bands[i])
+                );
+
+
+            if (minutes === null) {
+                continue;
+            }
+
+
+            arrivals.push({
+
+                route: route,
+
+                /*
+                 * Il fallback fornisce minuti e non timestamp
+                 * assoluti, quindi lo ricostruiamo localmente.
+                 */
+                time:
+                    now +
+                    minutes * 60
+            });
+        }
+
+
+        return cleanArrivals(arrivals);
+    }
+
+
+    function tryRomaMobileSource(
+        sources,
+        index,
+        callback
+    ) {
+
+        if (index >= sources.length) {
+
+            callback(
+                new Error(
+                    "RomaMobile non raggiungibile"
+                )
+            );
+
+            return;
+        }
+
+
+        xhrText(
+            sources[index].url,
+
+            function (err, html) {
+
+                var arrivals;
+
+
+                if (err) {
+
+                    tryRomaMobileSource(
+                        sources,
+                        index + 1,
+                        callback
+                    );
+
+                    return;
+                }
+
+
+                try {
+
+                    arrivals =
+                        parseRomaMobile(
+                            html
+                        );
+
+
+                    /*
+                     * Qui zero è una risposta valida:
+                     * la pagina può realmente non avere autobus.
+                     */
+                    callback(
+                        null,
+                        arrivals,
+                        sources[index].name
+                    );
+
+
+                } catch (e) {
+
+                    tryRomaMobileSource(
+                        sources,
+                        index + 1,
+                        callback
+                    );
+                }
+            }
+        );
+    }
+
+
+    /* ============================================================
+       REFRESH PRINCIPALE
+       ============================================================ */
+
+    function refresh() {
+
+        var gtfsSources;
+
+
+        if (requestRunning) {
+            return;
+        }
+
+
+        requestRunning = true;
+
+        status(
+            "loading",
+            "Aggiornamento..."
+        );
+
+
+        gtfsSources =
+            binarySources(
+                GTFS_RT_URL
+            );
+
+
+        /*
+         * 1. GTFS-RT ufficiale
+         */
+        tryGtfsSource(
+
+            gtfsSources,
+            0,
+
+            function (
+                gtfsError,
+                arrivals,
+                sourceName
+            ) {
+
+                if (!gtfsError) {
+
+                    currentArrivals =
+                        arrivals;
+
+                    lastUpdate =
+                        new Date();
+
+                    render();
+
+                    status(
+                        "ok",
+                        sourceName
+                    );
+
+                    requestRunning =
+                        false;
+
+                    return;
+                }
+
+
+                /*
+                 * 2. fallback RomaMobile
+                 */
+                tryRomaMobileSource(
+
+                    textProxySources(
+                        ROMAMOBILE_URL
+                    ),
+
+                    0,
+
+                    function (
+                        htmlError,
+                        htmlArrivals,
+                        htmlSource
+                    ) {
+
+                        if (!htmlError) {
+
+                            currentArrivals =
+                                htmlArrivals;
+
+                            lastUpdate =
+                                new Date();
+
+                            render();
+
+                            status(
+                                "ok",
+                                htmlSource +
+                                " (fallback)"
+                            );
+
+                        } else {
+
+                            renderOffline();
+
+                            status(
+                                "bad",
+                                "Riconnessione automatica..."
+                            );
+                        }
+
+
+                        requestRunning =
+                            false;
+                    }
+                );
+            }
+        );
+    }
+
+
+    /* ============================================================
+       AVVIO
+       ============================================================ */
+
+    updateClock();
+
+    setInterval(
+        updateClock,
+        1000
+    );
+
+
+    /*
+     * Aggiorniamo il countdown locale anche senza scaricare
+     * nuovamente il feed.
+     */
+    setInterval(
+        render,
+        DISPLAY_REFRESH_MS
+    );
+
+
+    /*
+     * Primo collegamento immediato.
+     */
+    refresh();
+
+
+    /*
+     * Richiesta dati ogni 30 secondi, come richiesto.
+     */
+    setInterval(
+        refresh,
+        NETWORK_REFRESH_MS
+    );
+
+
+    /*
+     * Se il tablet torna da standby, aggiorna subito.
+     */
+    if (document.addEventListener) {
+
+        document.addEventListener(
+
+            "visibilitychange",
+
+            function () {
+
+                if (!document.hidden) {
+                    refresh();
+                }
+            },
+
+            false
+        );
+    }
+
+}());
+</script>
+
 </body>
 </html>
